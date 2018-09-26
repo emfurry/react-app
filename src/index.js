@@ -12,24 +12,27 @@ function Square(props) {
   
 class Board extends React.Component {
 
-  constructor(props) {
-    super(props);
-    this.state = {
-      squares: Array(9).fill(null)
-    };
-  }
-
   handleClick(i) {
-    if (this.state.squares[i] != null || this.props.turn === '-')
+    if (this.props.turn.squares[i] != null || this.props.turn.player === '-')
       return;
 
-    const squares = this.state.squares.slice();    
-    squares[i] = this.props.turn;
-    this.setState({ squares: squares }, () => this.props.handleTakeTurn(this.state.squares));
+    const squares = this.props.turn.squares.slice();    
+    squares[i] = this.props.turn.player;
+    let player;
+    if (this.props.turn.player === 'X')
+      player = 'O';
+    else
+      player = 'X';
+
+    var nextTurn = {
+      player: player,
+      squares: squares
+    };
+    this.props.handleTakeTurn(nextTurn);
   }
 
   renderSquare(i) {
-    return <Square value={this.state.squares[i]} onClick={() => this.handleClick(i)} />;
+    return <Square value={this.props.turn.squares[i]} onClick={() => this.handleClick(i)} />;
   }
 
   render() {
@@ -60,37 +63,60 @@ class Game extends React.Component {
   constructor() {
     super();
     this.state = {
-      turn: 'X'
+      turnIndex: 0,
+      history: [
+        {
+          player: 'X',
+          squares: Array(9).fill(null)
+        }]
     };
   }
 
-  handleTakeTurn(squares) {
+  handleTakeTurn(nextTurn) {
+    var winner = calculateWinner(nextTurn.squares);
+    if (winner) {
+      nextTurn.player = '-';
+    }
 
-    var winner = calculateWinner(squares);
-    if (winner)
-      this.setState({ turn: '-'});
-    else if (this.state.turn === 'X')
-      this.setState({ turn: 'O'});
-    else
-      this.setState({ turn: 'X'});
+    const history = this.state.history.splice(0, this.state.turnIndex + 1);
+
+    this.setState({
+      turnIndex: this.state.turnIndex + 1,
+      history: history.concat([nextTurn])
+    });
+  }
+
+  getTurn(turnIndex) {
+    turnIndex = turnIndex || this.state.turnIndex;
+    return this.state.history[turnIndex];
+  }
+
+  goToTurn(x) {
+    this.setState({turnIndex: x});
   }
 
   render() {
     let status;
-    if (this.state.turn === '-')
+    if (this.getTurn().player === '-')
       status = 'Game over!'
     else
-      status = 'Next player: ' + (this.state.turn);
+      status = 'Next player: ' + (this.getTurn().player);
+
+    const turns = this.state.history.map((turn, x) => {
+      const message = (x === 0) ? 'Start' : 'Turn ' + (x+1);
+      return (
+        <li key={x}><button onClick={() => this.goToTurn(x)}>{message}</button></li>
+      );
+    });
 
     return (
       <div className="game">
         <div className="game-board">
-          <div className="status">{status}</div>
-          <Board turn={this.state.turn} handleTakeTurn={(sq) => this.handleTakeTurn(sq)} />
+          <Board turn={this.getTurn()} handleTakeTurn={(nextTurn) => this.handleTakeTurn(nextTurn)} />
         </div>
         <div className="game-info">
-          <div>{/* status */}</div>
-          <ol>{/* TODO */}</ol>
+          <div className="status">{status}</div>
+          <ol>{turns}</ol>
         </div>
       </div>
     );
